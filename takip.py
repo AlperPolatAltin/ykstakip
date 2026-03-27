@@ -45,6 +45,13 @@ def tarih_formatla(tarih_str):
         return tarih_str
 
 
+# YENİ FONKSİYON: Öğrenciyi ve ona ait görevleri veritabanından tamamen siler
+def ogrenci_sil(ogr_email):
+    c.execute("DELETE FROM konular WHERE email=?", (ogr_email,))
+    c.execute("DELETE FROM kullanicilar WHERE email=?", (ogr_email,))
+    conn.commit()
+
+
 # Sayfa ayarları
 st.set_page_config(page_title="YKS Koçluk Sistemi", layout="wide")
 
@@ -102,10 +109,12 @@ if st.session_state.giris_yapildi:
 
     st.divider()
 
+    # YENİ DERSLER EKLENDİ (Edebiyat, Tarih-1, Coğrafya-1)
     yks_dersleri = [
         "TYT Türkçe", "TYT Matematik", "TYT Fizik", "TYT Kimya", "TYT Biyoloji",
         "TYT Tarih", "TYT Coğrafya", "TYT Din", "TYT Felsefe",
-        "AYT Matematik", "AYT Fizik", "AYT Kimya", "AYT Biyoloji"
+        "AYT Matematik", "AYT Fizik", "AYT Kimya", "AYT Biyoloji",
+        "AYT Edebiyat", "AYT Tarih-1", "AYT Coğrafya-1"
     ]
 
     # --- KOÇ YETKİSİ ÖZEL PANELİ ---
@@ -128,6 +137,25 @@ if st.session_state.giris_yapildi:
                             st.error("Bu öğrenci maili zaten kayıtlı!")
                     else:
                         st.warning("Lütfen tüm alanları doldurunuz.")
+
+            # --- YENİ EKLENEN ÖĞRENCİ SİLME BÖLÜMÜ ---
+            st.divider()
+            st.subheader("🗑️ Öğrenci Sil")
+            c.execute("SELECT email, isim_soyisim FROM kullanicilar WHERE yetki='Öğrenci' AND koc_email=?",
+                      (koçun_maili,))
+            silinecek_ogrenciler = c.fetchall()
+
+            if silinecek_ogrenciler:
+                ogr_sil_sozlugu = {f"{isim} ({mail})": mail for mail, isim in silinecek_ogrenciler}
+                with st.form("ogrenci_sil_form"):
+                    silinecek_secim = st.selectbox("Silinecek Öğrenciyi Seç", list(ogr_sil_sozlugu.keys()))
+                    if st.form_submit_button("Öğrenciyi Sistemden Çıkar"):
+                        hedef_mail = ogr_sil_sozlugu[silinecek_secim]
+                        ogrenci_sil(hedef_mail)
+                        st.success(f"{silinecek_secim} başarıyla silindi!")
+                        st.rerun()
+            else:
+                st.info("Kayıtlı öğrenci bulunmuyor.")
 
         with sag_kolon:
             st.subheader("📌 Görev Ata")
